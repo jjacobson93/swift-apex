@@ -3,7 +3,7 @@
 // stdio.
 import Venice
 import File
-import JSON
+import Jay
 
 // Context represents the context data provided by a Lambda invocation.
 public struct Context {
@@ -110,9 +110,9 @@ enum DecodeError: ErrorProtocol {
 }
 
 func decode(from reader: File) throws -> Input  {
-    let data = try reader.readAllBytes()
-    let JSON = try JSONParser().parse(data: data)
-    guard let event = JSON["event"] else {
+    let data = try reader.readAllBytes().bytes
+    let json = try Jay().typesafeJsonFromData(data)
+    guard let event = json.dictionary?["event"] else {
         throw DecodeError.invalidInput
     }
     return Input(event: event, context: nil)
@@ -121,12 +121,12 @@ func decode(from reader: File) throws -> Input  {
 func encode(_ message: Output, to writer: File) throws {
     switch message {
         case .value(let v):
-            let output: JSON = ["value": v]
-            let data = JSONSerializer().serialize(json: output)
-            try writer.write(data)
+            let output: JSON = JSON.Object(["value": v])
+            let data = try Jay().dataFromJson(json: output)
+            try writer.write(Data(data))
         case .error(let e):
-            let output: JSON = ["error": .stringValue(e)]
-            let data = JSONSerializer().serialize(json: output)
-            try writer.write(data)
+            let output = JSON.Object(["error": .String(e)])
+            let data = try Jay().dataFromJson(json: output)
+            try writer.write(Data(data))
     }
 }
