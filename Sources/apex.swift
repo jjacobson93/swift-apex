@@ -107,11 +107,18 @@ public func handle(handler: (event: JSON, context: Context?) throws -> JSON) thr
 
 enum DecodeError: ErrorProtocol {
     case invalidInput
+    case noBytes
 }
 
 func decode(from reader: File) throws -> Input  {
-    let data = try reader.readAllBytes().bytes
-    let json = try Jay().typesafeJsonFromData(data)
+    
+//  Standard: read all, parse, process
+//    let data = try reader.readAllBytes().bytes
+//    let json = try Jay().typesafeJsonFromData(data)
+    
+//  Hopefully faster: read chunks, return if parsed, throw otherwise
+    let streamReader = try FileReader(file: reader)
+    let json = try Jay().typesafeJsonFromReader(streamReader)
     guard let event = json.dictionary?["event"] else {
         throw DecodeError.invalidInput
     }
@@ -128,5 +135,44 @@ func encode(_ message: Output, to writer: File) throws {
             let output = JSON.Object(["error": .String(e)])
             let data = try Jay().dataFromJson(json: output)
             try writer.write(Data(data))
+    }
+}
+
+class FileReader: Reader {
+    
+    let file: File
+    private var currentByte: Byte
+    
+    init(file: File) throws {
+        self.file = file
+        let byte = try FileReader.getNextByte(file: file)
+        self.currentByte = byte
+    }
+    
+    //MARK: Conform to Reader
+    
+    private class func getNextByte(file: File) throws -> Byte {
+        guard let nextByte = try file.read(upTo: 1).bytes.first else {
+            throw DecodeError.noBytes
+        }
+        return nextByte
+    }
+    
+    func curr() -> UInt8 {
+        return currentByte
+    }
+    
+    func next() throws {
+        self.currentByte = try FileReader.getNextByte(file: file)
+    }
+    
+    func isDone() -> Bool {
+        return file.eof || file.closed
+    }
+    
+    func finishParsingWhenValid() -> Bool {
+        //since the file stays open, we can't wait to "finish" reading, let's
+        //return when a valid JSON object has been parsed.
+        return true
     }
 }
