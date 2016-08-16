@@ -1,3 +1,5 @@
+import Apex
+
 struct Event {
     let message: String
 }

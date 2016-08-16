@@ -44,7 +44,7 @@ public final class JSONMapStreamParser : MapStreamParser {
 
     public init(stream: Stream) {
         self.stream = stream
-        self.buffer = Data(count: 1)
+        self.buffer = Data(count: 2048)
     }
 
     var lineNumber = 1
@@ -52,6 +52,11 @@ public final class JSONMapStreamParser : MapStreamParser {
 
     public func parse() throws -> Map {
         return try parseValue()
+    }
+
+    func reset() {
+        currentBufferIndex = 0
+        endBufferIndex = 1
     }
 
     func unexpectedTokenError(reason: String) -> Error {
@@ -98,11 +103,11 @@ extension JSONMapStreamParser {
 
     private func readChunk() throws {
         if stream.closed {
-            throw insufficientTokenError(reason: "unexpected end of tokens")
+            throw StreamError.closedStream
         }
         let bytesRead = try stream.read(into: &buffer)
         if bytesRead == 0 {
-            throw insufficientTokenError(reason: "unexpected end of tokens")
+            throw StreamError.endOfFile
         }
         endBufferIndex = bytesRead + 1
         currentBufferIndex = 0

@@ -1,6 +1,7 @@
 public enum StreamError : Error {
-    case closedStream(data: Data)
-    case timeout(data: Data)
+    case closedStream
+    case timeout
+    case endOfFile
 }
 
 public protocol InputStream {

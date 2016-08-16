@@ -67,7 +67,7 @@ extension FileDescriptorStream {
 
     private func ensureFileIsOpen() throws {
         if closed {
-            throw StreamError.closedStream(data: Data())
+            throw StreamError.closedStream
         }
     }
 }

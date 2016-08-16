@@ -24,34 +24,11 @@ extension Context {
     }
 }
 
-enum Output {
-    case value(Map)
-    case error(String)
-}
+public typealias Lambda<T> = @escaping (_ event: T, _ context: Context?) throws -> MapRepresentable
 
-extension Output : MapRepresentable {
-    var map: Map {
-        switch self {
-        case .value(let value):
-            return ["value": value]
-        case .error(let error):
-            return ["error": .string(error)]
-        }
-    }
-}
-
-public typealias InitializableHandleFunction<T> = @escaping (_ event: T, _ context: Context?) throws -> MapRepresentable
-public typealias HandleFunction = @escaping (_ event: Map, _ context: Context?) throws -> MapRepresentable
-
-public func λ <T : MapInitializable>(handleFunction: InitializableHandleFunction<T>) throws {
-    try λ { (map: Map, context: Context?) throws -> MapRepresentable in
-        return try handleFunction(T(map: map), context)
-    }
-}
-
-public func λ(handleFunction: HandleFunction) throws {
+public func λ <T : MapInitializable>(lambda: Lambda<T>) throws {
     let inputChannel = input()
-    let outputChannel = handle(inputChannel, handleFunction: handleFunction)
+    let outputChannel = handle(inputChannel, lambda: lambda)
     try output(outputChannel)
 }
 
@@ -62,11 +39,15 @@ func input() -> FallibleChannel<Map> {
     co {
         while true {
             do {
-                let message = try parser.parse()
-                inputChannel.send(message)
+                let input = try parser.parse()
+                inputChannel.send(input)
             } catch {
+                parser.reset()
                 inputChannel.send(error)
-                break
+                if error is StreamError {
+                    inputChannel.close()
+                    break
+                }
             }
         }
     }
@@ -74,54 +55,52 @@ func input() -> FallibleChannel<Map> {
     return inputChannel
 }
 
-func handle(_ inputChannel: FallibleChannel<Map>, handleFunction: HandleFunction) -> FallibleChannel<Output> {
-    let outputChannel = FallibleChannel<Output>()
+func handle<T : MapInitializable>(_ inputChannel: FallibleChannel<Map>, lambda: Lambda<T>) -> FallibleChannel<Map> {
+    let outputChannel = FallibleChannel<Map>()
     // let waitGroup = WaitGroup()
 
     co {
         for result in inputChannel {
             // waitGroup.add()
-            switch result {
-            case .value(let message):
-//                co {
-                    let output = invoke(message, handleFunction: handleFunction)
-                    outputChannel.send(output)
-                    // waitGroup.done()
-//                }
-            case .error(let error):
-                outputChannel.send(error)
-                break
+            co {
+                switch result {
+                case .value(let message):
+                    do {
+                        let event = try T(map: message["event"])
+                        let context = try? Context(map: message["context"])
+                        let value = try lambda(event, context)
+                        outputChannel.send(value.map)
+                    } catch {
+                        outputChannel.send(error)
+                    }
+                case .error(let error):
+                    outputChannel.send(error)
+                    if error is StreamError {
+                        outputChannel.close()
+                        break
+                    }
+                }
+                // waitGroup.done()
             }
-
         }
-
         // waitGroup.wait()
     }
 
     return outputChannel
 }
 
-func invoke(_ message: Map, handleFunction: HandleFunction) -> Output {
-    do {
-        let value = try handleFunction(
-            message["event"],
-            try? Context(map: message["context"])
-        )
-        return .value(value.map)
-    } catch {
-        return .error(String(describing: error))
-    }
-}
-
-func output(_ channel: FallibleChannel<Output>) throws {
+func output(_ channel: FallibleChannel<Map>) throws {
     let serializer = JSONMapStreamSerializer(stream: standardOutputStream)
-
     for result in channel {
         switch result {
-        case .value(let message):
-            try serializer.serialize(message.map)
+        case .value(let value):
+            try serializer.serialize(["value": value])
         case .error(let error):
-            throw error
+            if error is StreamError {
+                break
+            }
+            let errorDescription = String(describing: error)
+            try serializer.serialize(["error": .string(errorDescription)])
         }
     }
 }
