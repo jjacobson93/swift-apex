@@ -23,7 +23,7 @@ extension Event : MapInitializable {
     }
 }
 
-try λ { (event: Event, context: Context?) in
+try λ { (event: Event, context) in
     event.message.uppercased()
 }
 ```
