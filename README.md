@@ -1,4 +1,3 @@
-
 # Apex Swift
 
 Swift runtime support for Apex/Lambda – providing handlers for Lambda sources, and runtime requirements such as implementing the Node.js shim stdio interface.
