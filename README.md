@@ -12,10 +12,18 @@ Currently supports:
 ## Example
 
 ```swift
-import Apex
+struct Event {
+    let message: String
+}
 
-try handle { message, _ in
-    return message
+extension Event : MapInitializable {
+    init(map: Map) throws {
+        self.message = try map.get("message")
+    }
+}
+
+try λ { (event: Event, context: Context?) in
+    event.message.uppercased()
 }
 ```
 
@@ -23,8 +31,8 @@ Run the program:
 
 ```sh
 swift build
-echo '{"event":{"value":"Hello World!"}}' | .build/debug/Apex
-{"value":{"value":"Hello World!"}}
+echo '{"event":{"message":"Hello World!"}}' | .build/debug/Apex
+{"value":"HELLO WORLD!"}
 ```
 
 ## Notes

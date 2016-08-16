@@ -1,13 +1,13 @@
-struct Message {
-    let value: String
+struct Event {
+    let message: String
 }
 
-extension Message : MapInitializable {
+extension Event : MapInitializable {
     init(map: Map) throws {
-        self.value = try map.get("value")
+        self.message = try map.get("message")
     }
 }
 
-try λ { (message: Message, context: Context?) in
-    message.value.uppercased()
+try λ { (event: Event, context: Context?) in
+    event.message.uppercased()
 }
