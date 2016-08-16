@@ -11,6 +11,8 @@ Currently supports:
 ## Example
 
 ```swift
+import Apex
+
 struct Event {
     let message: String
 }
