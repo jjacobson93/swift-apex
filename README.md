@@ -13,11 +13,9 @@ Currently supports:
 ```swift
 import Apex
 
-struct Event {
+struct Event : MapInitializable {
     let message: String
-}
 
-extension Event : MapInitializable {
     init(map: Map) throws {
         self.message = try map.get("message")
     }
