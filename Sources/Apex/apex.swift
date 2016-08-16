@@ -95,12 +95,16 @@ func output(_ channel: FallibleChannel<Map>) throws {
         switch result {
         case .value(let value):
             try serializer.serialize(["value": value])
+            try standardOutputStream.write("\n")
+            try standardOutputStream.flush()
         case .error(let error):
             if error is StreamError {
                 break
             }
             let errorDescription = String(describing: error)
             try serializer.serialize(["error": .string(errorDescription)])
+            try standardOutputStream.write("\n")
+            try standardOutputStream.flush()
         }
     }
 }
