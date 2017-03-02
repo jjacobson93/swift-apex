@@ -18,20 +18,6 @@ extension Data : DataRepresentable {
 
 public protocol DataConvertible : DataInitializable, DataRepresentable {}
 
-#if os(Linux)
-extension Data {
-    public init(count: Int) {
-        self = Data(count: count)!
-    }
-
-    public init(_ bytes: [UInt8]) {
-        self = bytes.withUnsafeBufferPointer {
-            Data(bytes: UnsafeRawPointer($0.baseAddress!), count: $0.count)
-        }
-    }
-}
-#endif
-
 extension Data {
     public init(_ string: String) {
         // TODO: How can this fail?

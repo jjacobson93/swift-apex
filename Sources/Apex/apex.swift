@@ -24,9 +24,9 @@ extension Context {
     }
 }
 
-public typealias Lambda<T> = @escaping (_ event: T, _ context: Context?) throws -> MapRepresentable
+public typealias Lambda<T> = (_ event: T, _ context: Context?) throws -> MapRepresentable
 
-public func λ <T : MapInitializable>(lambda: Lambda<T>) throws {
+public func λ <T : MapInitializable>(lambda: @escaping Lambda<T>) throws {
     let inputChannel = input()
     let outputChannel = handle(inputChannel, lambda: lambda)
     try output(outputChannel)
@@ -55,7 +55,7 @@ func input() -> FallibleChannel<Map> {
     return inputChannel
 }
 
-func handle<T : MapInitializable>(_ inputChannel: FallibleChannel<Map>, lambda: Lambda<T>) -> FallibleChannel<Map> {
+func handle<T : MapInitializable>(_ inputChannel: FallibleChannel<Map>, lambda: @escaping Lambda<T>) -> FallibleChannel<Map> {
     let outputChannel = FallibleChannel<Map>()
     // let waitGroup = WaitGroup()
 
